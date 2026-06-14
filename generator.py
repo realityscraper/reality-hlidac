@@ -6,7 +6,7 @@ Generuje:
   - data/stats.json – statistiky pro AJAX refresh
 """
 import json, math
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from pathlib import Path
 import db as db_mod
 
@@ -23,6 +23,24 @@ PORTAL_COLOR = {
     "ceskereality":"#15803d",
 }
 
+_CET = timezone(timedelta(hours=1))
+_CEST = timezone(timedelta(hours=2))
+
+def _prague_tz():
+    """Vrátí správný timezone pro Prague – léto CEST (+2), zima CET (+1)."""
+    now_utc = datetime.now(timezone.utc)
+    # DST v EU: poslední neděle v březnu – poslední neděle v říjnu (přibližně)
+    year = now_utc.year
+    # Poslední neděle v březnu
+    mar31 = datetime(year, 3, 31, 1, 0, tzinfo=timezone.utc)
+    dst_start = mar31 - timedelta(days=mar31.weekday() + 1)
+    # Poslední neděle v říjnu
+    oct31 = datetime(year, 10, 31, 1, 0, tzinfo=timezone.utc)
+    dst_end = oct31 - timedelta(days=oct31.weekday() + 1)
+    if dst_start <= now_utc < dst_end:
+        return _CEST
+    return _CET
+
 
 def fmt_cena(cena):
     if not cena:
@@ -34,7 +52,8 @@ def fmt_cena(cena):
 
 def fmt_datum(iso):
     try:
-        d = datetime.fromisoformat(iso)
+        tz = _prague_tz()
+        d = datetime.fromisoformat(iso).replace(tzinfo=timezone.utc).astimezone(tz)
         return d.strftime("%-d. %-m. %Y %H:%M")
     except Exception:
         return iso or ""
@@ -57,11 +76,9 @@ def card_html(inz):
     else:
         img_html = '<div class="card-img card-img--empty"><span>🏠</span></div>'
 
-    # Vždy zobrazit všechny 3 atributy v jedné řadě (chybějící označit pomlčkou)
     disp = inz.get("dispozice") or "—"
     plocha = f"{int(inz['plocha'])} m²" if inz.get("plocha") else "—"
     lok = inz.get("lokalita") or "—"
-    # Lokalitu zkrátit na rozumnou délku
     if len(lok) > 38:
         lok = lok[:36] + "…"
     meta = [
@@ -250,13 +267,12 @@ def generuj(conn, cfg):
     vsechny   = db_mod.nacti_vse(conn)
     celkem    = len(vsechny)
     stats     = db_mod.statistiky(conn)
-    aktu      = datetime.now().strftime("%-d. %-m. %Y %H:%M")
+    tz        = _prague_tz()
+    aktu      = datetime.now(tz).strftime("%-d. %-m. %Y %H:%M")
 
-    # Uložit stats JSON pro live refresh
     with open(out / "data" / "stats.json", "w", encoding="utf-8") as f:
         json.dump({**stats, "aktualizovano": aktu}, f, ensure_ascii=False)
 
-    # --- Stránky s přehledem inzerátů ---
     stranky = math.ceil(celkem / na_stranu) or 1
     for s in range(1, stranky + 1):
         offset = (s - 1) * na_stranu
@@ -296,4 +312,3 @@ def generuj(conn, cfg):
         (out / fname).write_text(html, encoding="utf-8")
 
     return stranky, celkem
-
