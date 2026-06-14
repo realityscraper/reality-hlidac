@@ -2,8 +2,7 @@ name: Scrape and deploy
 
 on:
   schedule:
-    # Každých 20 minut. GitHub může cron přeskočit když je vysoká zátěž.
-    - cron: '*/20 * * * *'
+    - cron: '30 1 * * *'
   workflow_dispatch:        # manuální spuštění z UI
   push:
     branches: [master]
