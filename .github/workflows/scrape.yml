@@ -1,0 +1,102 @@
+name: Scrape and deploy
+
+on:
+  schedule:
+    # Každých 30 minut. GitHub může cron přeskočit když je vysoká zátěž.
+    - cron: '*/30 * * * *'
+  workflow_dispatch:        # manuální spuštění z UI
+  push:
+    branches: [main]
+    paths:
+      - 'scrapers/**'
+      - 'generator.py'
+      - 'main.py'
+      - 'db.py'
+      - 'config.yaml'
+      - 'encrypt_html.py'
+      - '.github/workflows/scrape.yml'
+
+permissions:
+  contents: write           # potřeba pro commit DB zpět do repa
+  pages: write              # nasazení na GitHub Pages
+  id-token: write           # OIDC pro Pages deploy
+
+# Zabraň souběžným běhům - cron by se mohl překrýt s manuálním spuštěním
+concurrency:
+  group: scrape-and-deploy
+  cancel-in-progress: false
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    outputs:
+      new_count: ${{ steps.scrape.outputs.new_count }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # potřebujeme write přístup pro pozdější commit DB
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run scraper
+        id: scrape
+        run: |
+          mkdir -p data public
+          python main.py 2>&1 | tee scraper.log
+          # počet nových inzerátů
+          NEW=$(grep -oP 'Nových inzerátů: \K[0-9]+' scraper.log | tail -1 || echo "0")
+          echo "new_count=$NEW" >> $GITHUB_OUTPUT
+          echo "Nových inzerátů: $NEW"
+
+      - name: Encrypt HTML pages
+        env:
+          SITE_PASSWORD: ${{ secrets.SITE_PASSWORD }}
+        run: |
+          if [ -z "$SITE_PASSWORD" ]; then
+            echo "❌ SITE_PASSWORD secret není nastavený v repo secrets"
+            exit 1
+          fi
+          python encrypt_html.py public
+
+      - name: Commit updated database
+        run: |
+          git config --local user.email "actions@github.com"
+          git config --local user.name "GitHub Actions"
+          git add data/reality.db
+          if git diff --staged --quiet; then
+            echo "DB beze změny, neukládám commit"
+          else
+            git commit -m "Update database [skip ci]" \
+              -m "Nových inzerátů: ${{ steps.scrape.outputs.new_count }}"
+            # pull --rebase pro případ že mezitím něco přibylo
+            git pull --rebase origin main || true
+            git push
+          fi
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: public
+
+  deploy:
+    needs: scrape
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

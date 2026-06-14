@@ -1,0 +1,37 @@
+# ═══════════════════════════════════════════════════
+#  Reality Hlídač – konfigurace
+#  GitHub verze – relativní cesty
+# ═══════════════════════════════════════════════════
+
+hledani:
+  typ:            prodej        # prodej | pronajem
+  nemovitost:     byt           # byt | dum | pozemek
+  lokalita:       Praha
+  cena_max:       11000000      # Kč
+  cena_min:       100000        # Kč
+  dispozice:      ["3+kk", "3+1", "4+kk", "4+1", "5+kk", "5+1", "6+"]
+
+portaly:
+  sreality:       true
+  bezrealitky:    true
+  idnes:          true
+  ceskereality:   true
+
+web:
+  output_dir:           public
+  nazev_stranky:        "Reality Hlídač Praha"
+  inzeratu_na_stranu:   24
+
+scraper:
+  interval_minut:     30
+  delay_sekund:       2
+  timeout_sekund:     20
+  max_stranek:        3
+  user_agent:         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+
+geocoding:
+  zapnuto:        false
+
+databaze:
+  soubor:         data/reality.db
+  uchovavat_dni:  90
