@@ -6,7 +6,7 @@ on:
     - cron: '*/20 * * * *'
   workflow_dispatch:        # manuální spuštění z UI
   push:
-    branches: [main]
+    branches: [master]
     paths:
       - 'scrapers/**'
       - 'generator.py'
