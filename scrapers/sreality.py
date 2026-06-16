@@ -95,13 +95,15 @@ def _fetch_page(client, build_id, lok_slug, velikosti, cena_od, cena_do, strana)
 
 
 def _norm_img(url):
-    """Sreality vrací '//d18-a.sdn.cz/...' – přidáme https:."""
+    """Sreality vrací '//d18-a.sdn.cz/...' – přidáme https: a transformační parametr.
+    Bez query parametru CDN vrací 401 Unauthorized."""
     if not url:
         return None
     if url.startswith("//"):
-        return "https:" + url
+        url = "https:" + url
+    if "?" not in url:
+        url = url + "?fl=res,400,300,3|shr,,20|jpg,90"
     return url
-
 
 def _lokalita_str(loc):
     """{city, cityPart, street, ...} -> 'Street, City - CityPart'"""
