@@ -4,12 +4,14 @@
 # ═══════════════════════════════════════════════════
 
 hledani:
-  typ:            prodej        # prodej | pronajem
-  nemovitost:     byt           # byt | dum | pozemek
+  typ:            prodej
+  nemovitost:     byt
   lokalita:       Praha
-  cena_max:       11000000      # Kč
-  cena_min:       1000000       # Kč
+  cena_max:       14000000
+  cena_min:       1000000
   dispozice:      ["3+kk", "3+1", "4+kk", "4+1", "5+kk", "5+1", "6+"]
+  plocha_min:     60           # m² - inzeráty menší budou přeskočeny
+  # plocha_max:   200          # m² - odkomentuj pokud chceš i horní strop
 
 portaly:
   sreality:       true

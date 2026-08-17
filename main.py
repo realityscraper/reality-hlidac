@@ -71,8 +71,9 @@ def _headers(cfg):
 
 def _pasuje(inz, h):
     """Ověří zda inzerát splňuje filtry."""
-    cena  = inz.get("cena")
-    disp  = (inz.get("dispozice") or "").lower()
+    cena   = inz.get("cena")
+    disp   = (inz.get("dispozice") or "").lower()
+    plocha = inz.get("plocha")
 
     if h.get("cena_max") and cena and cena > h["cena_max"]:
         return False
@@ -82,6 +83,10 @@ def _pasuje(inz, h):
         povolene = [d.lower() for d in h["dispozice"]]
         if not any(p in disp for p in povolene):
             return False
+    if h.get("plocha_min") and plocha and plocha < h["plocha_min"]:
+        return False
+    if h.get("plocha_max") and plocha and plocha > h["plocha_max"]:
+        return False
     return True
 
 
